@@ -236,14 +236,14 @@ class PowerPaintController:
 
         if task != "image-outpainting":
             if size1 < size2:
-                input_image["image"] = input_image["image"].convert("RGB").resize((640, int(size2 / size1 * 640)))
+                input_image["image"] = input_image["image"].convert("RGB")
             else:
-                input_image["image"] = input_image["image"].convert("RGB").resize((int(size1 / size2 * 640), 640))
+                input_image["image"] = input_image["image"].convert("RGB")
         else:
             if size1 < size2:
-                input_image["image"] = input_image["image"].convert("RGB").resize((512, int(size2 / size1 * 512)))
+                input_image["image"] = input_image["image"].convert("RGB")
             else:
-                input_image["image"] = input_image["image"].convert("RGB").resize((int(size1 / size2 * 512), 512))
+                input_image["image"] = input_image["image"].convert("RGB")
 
         if vertical_expansion_ratio is not None and horizontal_expansion_ratio is not None:
             o_W, o_H = input_image["image"].convert("RGB").size
@@ -291,12 +291,17 @@ class PowerPaintController:
         promptA, promptB, negative_promptA, negative_promptB = add_task(prompt, negative_prompt, task, self.version)
         print(promptA, promptB, negative_promptA, negative_promptB)
 
-        img = np.array(input_image["image"].convert("RGB"))
-        W = int(np.shape(img)[0] - np.shape(img)[0] % 8)
-        H = int(np.shape(img)[1] - np.shape(img)[1] % 8)
-        input_image["image"] = input_image["image"].resize((H, W))
-        input_image["mask"] = input_image["mask"].resize((H, W))
+        ori_W, ori_H = input_image["image"].size
+        print(ori_H, ori_W)
+        W, H = ori_W, ori_H
         set_seed(seed)
+
+        if task != "image-outpainting":
+            img = np.array(input_image["image"].convert("RGB"))
+            H = int(np.shape(img)[0] - np.shape(img)[0] % 8)
+            W = int(np.shape(img)[1] - np.shape(img)[1] % 8)
+            input_image["image"] = input_image["image"].resize((W, H))
+            input_image["mask"] = input_image["mask"].resize((W, H))
 
         if self.version == "ppt-v1":
             # for sd-inpainting based method
@@ -309,8 +314,8 @@ class PowerPaintController:
                 negative_promptB=negative_promptB,
                 image=input_image["image"].convert("RGB"),
                 mask=input_image["mask"].convert("RGB"),
-                width=H,
-                height=W,
+                width=W,
+                height=H,
                 guidance_scale=scale,
                 num_inference_steps=ddim_steps,
             ).images[0]
@@ -335,10 +340,12 @@ class PowerPaintController:
                 negative_promptB=negative_promptB,
                 negative_promptU=negative_prompt,
                 guidance_scale=scale,
-                width=H,
-                height=W,
+                width=W,
+                height=H,
             ).images[0]
-
+        
+        # 在返回结果前resize到原始尺寸
+        result = result.resize((ori_W, ori_H))
         return result
 
     def predict_controlnet(
