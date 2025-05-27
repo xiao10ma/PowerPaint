@@ -43,13 +43,11 @@ lora_config = LoraConfig(
     r=8,
     lora_alpha=16,
     lora_dropout=0.1,
-    target_modules=["to_q", "to_k", "to_v", "to_out", "proj"],
+    target_modules=["to_q", "to_k", "to_v"],
     bias="none",
     inference_mode=False,
-    task_type="UNET",
+    task_type=None,
 )
-
-
 
 if is_wandb_available():
     import wandb
