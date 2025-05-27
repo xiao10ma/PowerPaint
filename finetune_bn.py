@@ -701,18 +701,10 @@ def main(args):
     else:
         optimizer_class = torch.optim.AdamW
 
-    # 1. trainable embedding + 2. trainable model (brushnet)
+    # 1. trainable model (brushnet) lora
     vae.requires_grad_(False)
     unet.requires_grad_(False)
     text_encoder.requires_grad_(False)
-
-    optimizer = optimizer_class(
-        list(brushnet.parameters()),
-        lr=args.learning_rate,
-        betas=(args.adam_beta1, args.adam_beta2),
-        weight_decay=args.adam_weight_decay,
-        eps=args.adam_epsilon,
-    )
 
     # transforms used for preprocessing dataset
     train_transforms = transforms.Compose(
@@ -752,6 +744,17 @@ def main(args):
         args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
         overrode_max_train_steps = True
 
+    brushnet = get_peft_model(brushnet, lora_config)
+    brushnet.train()
+    brushnet.print_trainable_parameters()
+    optimizer = optimizer_class(
+        list(brushnet.parameters()),
+        lr=args.learning_rate,
+        betas=(args.adam_beta1, args.adam_beta2),
+        weight_decay=args.adam_weight_decay,
+        eps=args.adam_epsilon,
+    )
+
     lr_scheduler = get_scheduler(
         args.lr_scheduler,
         optimizer=optimizer,
@@ -760,9 +763,6 @@ def main(args):
         num_cycles=args.lr_num_cycles,
         power=args.lr_power,
     )
-
-    brushnet = get_peft_model(brushnet, lora_config)
-    brushnet.train()
     # Prepare everything with our `accelerator`.
     brushnet, text_encoder, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
         brushnet, text_encoder, optimizer, train_dataloader, lr_scheduler
