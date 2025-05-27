@@ -706,14 +706,10 @@ def main(args):
     # 1. trainable embedding + 2. trainable model (brushnet)
     vae.requires_grad_(False)
     unet.requires_grad_(False)
-
-    # Freeze all parameters except for the token embeddings in text encoder
-    text_encoder.text_model.encoder.requires_grad_(False)
-    text_encoder.text_model.final_layer_norm.requires_grad_(False)
-    text_encoder.text_model.embeddings.position_embedding.requires_grad_(False)
+    text_encoder.requires_grad_(False)
 
     optimizer = optimizer_class(
-        list(brushnet.parameters()) + list(text_encoder.get_input_embeddings().parameters()),
+        list(brushnet.parameters()),
         lr=args.learning_rate,
         betas=(args.adam_beta1, args.adam_beta2),
         weight_decay=args.adam_weight_decay,
@@ -769,7 +765,6 @@ def main(args):
 
     brushnet = get_peft_model(brushnet, lora_config)
     brushnet.train()
-    text_encoder.train()
     # Prepare everything with our `accelerator`.
     brushnet, text_encoder, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
         brushnet, text_encoder, optimizer, train_dataloader, lr_scheduler
@@ -778,6 +773,7 @@ def main(args):
     # Move vae, unet and text_encoder to device and cast to weight_dtype
     vae.to(accelerator.device, dtype=weight_dtype)
     unet.to(accelerator.device, dtype=weight_dtype)
+    text_encoder.to(accelerator.device, dtype=weight_dtype)
 
     # We need to recalculate our total training steps as the size of the training dataloader may have changed.
     num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)
@@ -849,9 +845,6 @@ def main(args):
     )
 
     image_logs = None
-
-    # keep original embeddings as reference
-    orig_embeds_params = accelerator.unwrap_model(text_encoder).get_input_embeddings().weight.data.clone()
 
     for _ in range(first_epoch, args.num_train_epochs):
         train_loss = 0.0
@@ -951,9 +944,7 @@ def main(args):
 
                 accelerator.backward(loss)
                 if accelerator.sync_gradients:
-                    params_to_clip = list(brushnet.parameters()) + list(
-                        accelerator.unwrap_model(text_encoder).get_input_embeddings().parameters()
-                    )
+                    params_to_clip = list(brushnet.parameters())
                     accelerator.clip_grad_norm_(params_to_clip, args.max_grad_norm)
                 optimizer.step()
                 lr_scheduler.step()
@@ -962,11 +953,6 @@ def main(args):
                 # Let's make sure we don't update any embedding weights besides the newly added token
                 index_no_updates = torch.ones((len(tokenizer),), dtype=torch.bool)
                 index_no_updates[min(placeholder_token_ids) : max(placeholder_token_ids) + 1] = False
-
-                with torch.no_grad():
-                    accelerator.unwrap_model(text_encoder).get_input_embeddings().weight[index_no_updates] = (
-                        orig_embeds_params[index_no_updates]
-                    )
 
             # Checks if the accelerator has performed an optimization step behind the scenes
             if accelerator.sync_gradients:
