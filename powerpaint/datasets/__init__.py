@@ -1,5 +1,6 @@
 import random
 from typing import List
+import numpy as np
 
 from torch.utils.data import IterableDataset
 
@@ -9,41 +10,33 @@ from .nuscenes import NuScenesIterJsonDataset
 
 
 class ProbPickingDataset(IterableDataset):
-    """A dataset wrapper for picking dataset with probability."""
-
-    def __init__(self, datasets: List[dict]):
+    def __init__(self, datasets):
+        """
+        Args:
+            datasets: list of dict containing {"dataset": dataset, "prob": probability}
+        """
         super().__init__()
-        assert sum([dataset["prob"] for dataset in datasets]) == 1
-
-        self.dataset_list = []
-        self.range_list = []
-
-        start_idx = 0
-        for dataset_prob in datasets:
-            dataset = dataset_prob["dataset"]
-            prob = dataset_prob["prob"]
-            end_idx = start_idx + prob
-            self.dataset_list.append(iter(dataset))
-            self.range_list.append([start_idx, end_idx])
-            start_idx = end_idx
+        self.datasets = datasets
+        probs = [d["prob"] for d in datasets]
+        self.probs = np.array(probs) / np.sum(probs)
+        
+    def __len__(self):
+        return sum(len(d["dataset"]) for d in self.datasets)
 
     def __iter__(self):
+        # 为每个worker创建独立的迭代器
+        iterators = [iter(d["dataset"]) for d in self.datasets]
         while True:
-            rand_num = random.random()
-            for idx, (s, e) in enumerate(self.range_list):
-                if s <= rand_num < e:
-                    iterator = self.dataset_list[idx]
-                    try:
-                        data = next(iterator)
-                    except StopIteration:
-                        iterator = iter(self.dataset_list[idx])
-                        self.dataset_list[idx] = iterator
-                        data = next(iterator)
-                    yield data
-
-    def __len__(self):
-        # pesudo length
-        return 999_999_999
+            # 随机选择一个数据集
+            dataset_idx = np.random.choice(len(self.datasets), p=self.probs)
+            
+            try:
+                # 尝试从选中的数据集获取数据
+                yield next(iterators[dataset_idx])
+            except StopIteration:
+                # 如果当前数据集已经遍历完，重新初始化该数据集的迭代器
+                iterators[dataset_idx] = iter(self.datasets[dataset_idx]["dataset"])
+                yield next(iterators[dataset_idx])
 
 
 __all__ = ["ProbPickingDataset", "NuScenesIterJsonDataset"]

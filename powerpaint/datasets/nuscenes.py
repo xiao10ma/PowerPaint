@@ -29,6 +29,12 @@ class NuScenesIterJsonDataset(IterableDataset):
         self.task_prompt = task_prompt
         self.resolution = resolution
 
+        total_len = 0
+        for scene_name, cam_dict in self.img_meta.items():
+            for cam_name, cam_meta in cam_dict.items():
+                total_len += len(cam_meta["image"])
+        self.total_len = total_len
+
     def __iter__(self):
         prompt = ""
         promptA = self.task_prompt.context_inpainting.placeholder_tokens
@@ -82,3 +88,6 @@ class NuScenesIterJsonDataset(IterableDataset):
                     ).input_ids
 
                     yield output
+
+    def __len__(self):
+        return self.total_len
