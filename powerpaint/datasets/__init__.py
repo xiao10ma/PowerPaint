@@ -3,8 +3,9 @@ from typing import List
 
 from torch.utils.data import IterableDataset
 
-from .laion import LaionIterJsonDataset
-from .openimage import OpenImageBLIPaug_Dataset
+# from .laion import LaionIterJsonDataset
+# from .openimage import OpenImageBLIPaug_Dataset
+from .nuscenes import NuScenesIterJsonDataset
 
 
 class ProbPickingDataset(IterableDataset):
@@ -45,4 +46,4 @@ class ProbPickingDataset(IterableDataset):
         return 999_999_999
 
 
-__all__ = ["OpenImageBLIPaug_Dataset", "LaionIterJsonDataset", "ProbPickingDataset"]
+__all__ = ["ProbPickingDataset", "NuScenesIterJsonDataset"]

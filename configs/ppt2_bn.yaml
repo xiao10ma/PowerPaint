@@ -24,33 +24,41 @@ task_prompt:
 train_data:
   resolution: 512
   datasets:
-    - name: "laion5b"
-      # for text-free task prompts
-      prob: 0.6 # the probability of presence during training
-      dataset_class: "LaionIterJsonDataset"
-      desc_prefix: false # set as true to put description in front of task prompt
+    # - name: "laion5b"
+    #   # for text-free task prompts
+    #   prob: 0.6 # the probability of presence during training
+    #   dataset_class: "LaionIterJsonDataset"
+    #   desc_prefix: false # set as true to put description in front of task prompt
 
-      # you may need to change the path to your own path
-      client_prefix: "laion5b:"
-      anno_root: "laion5b:s3://llm-process/laion-5b/format/v020/laion2B-en/"
-      random_mask_root: "data/lama_mask/"
-      aethetic_score_threshold: 5
-      bufsize: 100
-      resolution: 512
+    #   # you may need to change the path to your own path
+    #   client_prefix: "laion5b:"
+    #   anno_root: "laion5b:s3://llm-process/laion-5b/format/v020/laion2B-en/"
+    #   random_mask_root: "data/lama_mask/"
+    #   aethetic_score_threshold: 5
+    #   bufsize: 100
+    #   resolution: 512
 
-    - name: "openimages"
-      # for text-guided task prompts
-      prob: 0.4 # the probability of presence during training
-      dataset_class: "OpenImageBLIPaug_Dataset"
-      desc_prefix: false # set description in front of task prompt
+    # - name: "openimages"
+    #   # for text-guided task prompts
+    #   prob: 0.4 # the probability of presence during training
+    #   dataset_class: "OpenImageBLIPaug_Dataset"
+    #   desc_prefix: false # set description in front of task prompt
 
-      # you may need to change the path to your own path
-      image_root: "openmmlab:s3://openmmlab/datasets/detection/OpenImages/OpenImages/train/"
-      mask_root: "data/openimagev6/mask/"
-      # prompt that describes segmented objects
-      anno_root: "data/openimagev6/prompt"
-      aethetic_score_threshold: 0.1
-      bufsize: null
+    #   # you may need to change the path to your own path
+    #   image_root: "openmmlab:s3://openmmlab/datasets/detection/OpenImages/OpenImages/train/"
+    #   mask_root: "data/openimagev6/mask/"
+    #   # prompt that describes segmented objects
+    #   anno_root: "data/openimagev6/prompt"
+    #   aethetic_score_threshold: 0.1
+    #   bufsize: null
+    #   resolution: 512
+
+    - name: "nuscenes"
+      prob: 1.
+      dataset_class: "NuScenesIterJsonDataset"
+      desc_prefix: false
+
+      img_meta_path: "nuscenes_image_paths_mini.json"
       resolution: 512
 
 # training hyper-parameters

@@ -17,5 +17,6 @@ data/
 *.jpg
 *.mp4
 *.gif
+*.json
 
 debug*
