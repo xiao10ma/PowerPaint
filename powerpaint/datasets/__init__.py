@@ -1,7 +1,7 @@
 import random
 from typing import List
 import numpy as np
-
+import torch
 from torch.utils.data import IterableDataset
 
 # from .laion import LaionIterJsonDataset
@@ -24,8 +24,15 @@ class ProbPickingDataset(IterableDataset):
         return sum(len(d["dataset"]) for d in self.datasets)
 
     def __iter__(self):
-        # 为每个worker创建独立的迭代器
+        worker_info = torch.utils.data.get_worker_info()
+        
+        # 为每个worker创建独立的迭代器和随机种子
+        if worker_info is not None:
+            # 为每个worker设置不同的随机种子
+            np.random.seed(worker_info.seed % np.iinfo(np.uint32).max)
+        
         iterators = [iter(d["dataset"]) for d in self.datasets]
+        
         while True:
             # 随机选择一个数据集
             dataset_idx = np.random.choice(len(self.datasets), p=self.probs)
